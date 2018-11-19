@@ -11,6 +11,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -19,15 +20,22 @@ import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+public class MainActivity extends AppCompatActivity implements SensorEventListener, View.OnClickListener {
 
     private static final int REQUEST_CODE_FOR_CAMERA = 100;
 
@@ -107,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         sensorManager = (SensorManager) getSystemService(Activity.SENSOR_SERVICE);
         autoFitTextureView = findViewById(R.id.texture);
+        findViewById(R.id.btn_capture).setOnClickListener(this);
     }
 
     private void openCamera(int width, int height) {
@@ -161,7 +170,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btn_capture: {
+                takePicture();
+                break;
+            }
+
+        }
+    }
+
     private int getOrientation() {
+//        if (isBackCamera()) {
+        return (mCameraInfo.orientation - mSensorDegrees + 360) % 360;
+//        } else {
+//            return (cameraInfo.orientation + mSensorDegrees + 180) % 360;
+//        }
+    }
+
+    private int getRotation() {
 //        if (isBackCamera()) {
         return (mCameraInfo.orientation - mSensorDegrees + 360) % 360;
 //        } else {
@@ -198,6 +226,61 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
         return optimalSize;
+    }
+
+    private void takePicture() {
+        mCamera.cancelAutoFocus();
+        mCamera.autoFocus(new Camera.AutoFocusCallback() {
+            @Override
+            public void onAutoFocus(boolean success, Camera camera) {
+                // 自动对焦成功后拍照。
+                captureStillPicture();
+            }
+        });
+    }
+
+    private void captureStillPicture() {
+        mParameters.setRotation(getRotation());
+        mCamera.setParameters(mParameters);
+        mCamera.takePicture(null, null, null, new Camera.PictureCallback() {
+            @Override
+            public void onPictureTaken(final byte[] data, Camera camera) {
+                AsyncTask.THREAD_POOL_EXECUTOR.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        savePicture(data);
+                    }
+                });
+                Toast.makeText(MainActivity.this, "Capture completed!", Toast.LENGTH_SHORT).show();
+                camera.cancelAutoFocus();
+                camera.startPreview();
+            }
+        });
+    }
+
+    private void savePicture(byte[] data) {
+        FileOutputStream output = null;
+        try {
+            File parent=new File("/sdcard/DCIM/burstDualCam");
+            if(!parent.exists()) parent.mkdirs();
+            output = new FileOutputStream(new File(parent,generateTimestamp()+".jpg"));
+            output.write(data);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                output.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static String generateTimestamp() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss_SSS", Locale.US);
+        return sdf.format(new Date());
     }
 
     private Camera.Size chooseOptimalSize(List<Camera.Size> sizes, int viewWidth, int viewHeight) {
@@ -276,6 +359,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
+
 
     class CompareByArea implements Comparator<Camera.Size> {
 

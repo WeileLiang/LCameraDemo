@@ -15,5 +15,12 @@
             android:layout_height="match_parent" />
     </FrameLayout>
 
+    <Button
+        android:id="@+id/btn_capture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="Capture"
+        android:textAllCaps="false" />
 
 </RelativeLayout>
