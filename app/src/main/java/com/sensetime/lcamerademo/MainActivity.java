@@ -155,6 +155,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
+    public void closeCamera() {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -168,6 +176,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         } else {
             autoFitTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        closeCamera();
+        sensorManager.unregisterListener(this);
+        autoFitTextureView.setSurfaceTextureListener(null);
     }
 
     @Override
